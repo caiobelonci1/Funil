@@ -162,3 +162,30 @@ app.get('/api/contacts/:contactId', async (req, res) => {
     res.status(500).json({ error: 'Erro ao buscar mensagens.' });
   }
 });
+
+// =================================================================
+// ROTA DA API: Atualizar o status de um contato
+// =================================================================
+app.put('/api/contacts/:contactId/status', async (req, res) => {
+  const { contactId } = req.params;
+  const { newStatus } = req.body; // O frontend enviará o novo status no corpo da requisição
+
+  console.log(`API: Recebida requisição para mudar status do contato ${contactId} para ${newStatus}`);
+
+  // Uma pequena validação para garantir que o status é um dos permitidos
+  const allowedStatuses = ["INTERESSADO", "PENDENTE", "CONCLUIDO"];
+  if (!allowedStatuses.includes(newStatus)) {
+    return res.status(400).json({ error: "Status inválido." });
+  }
+
+  try {
+    const updatedContact = await prisma.user.update({
+      where: { id: contactId },
+      data: { status: newStatus },
+    });
+    res.json(updatedContact); // Retorna o contato atualizado
+  } catch (error) {
+    console.error(`❌ Erro ao atualizar status para o contato ${contactId}:`, error);
+    res.status(500).json({ error: 'Erro ao atualizar status.' });
+  }
+});
