@@ -132,3 +132,33 @@ app.get('/api/contacts', async (req, res) => {
     res.status(500).json({ error: 'Erro ao buscar contatos do banco de dados.' });
   }
 });
+
+// =================================================================
+// ROTA DA API: Buscar um contato específico e seu histórico de mensagens
+// =================================================================
+app.get('/api/contacts/:contactId', async (req, res) => {
+  // Pega o ID do contato que foi passado na URL
+  const { contactId } = req.params;
+  console.log(`API: Recebida requisição para as mensagens do contato ${contactId}`);
+
+  try {
+    // Busca no banco de dados todas as mensagens que pertencem a este ID de contato
+    const messages = await prisma.message.findMany({
+      where: {
+        userId: contactId, // O filtro principal
+      },
+      orderBy: {
+        createdAt: 'asc', // Ordena da mais antiga para a mais nova, como um chat
+      },
+    });
+
+    // Se o contato existir mas não tiver mensagens, isso retornará uma lista vazia [], o que é correto.
+
+    // Envia a lista de mensagens como resposta em formato JSON
+    res.json(messages);
+
+  } catch (error) {
+    console.error(`❌ Erro ao buscar mensagens para o contato ${contactId}:`, error);
+    res.status(500).json({ error: 'Erro ao buscar mensagens.' });
+  }
+});
