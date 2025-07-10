@@ -11,8 +11,8 @@ async function testAPIs() {
   console.log(`📍 URL Base: ${BASE_URL}\n`);
 
   try {
-    // 1. Teste da API de contatos com histórico completo
-    console.log('1️⃣ Testando GET /api/contacts (histórico completo)');
+    // 1. Teste da API de contatos
+    console.log('1️⃣ Testando GET /api/contacts');
     const contactsResponse = await axios.get(`${BASE_URL}/api/contacts`);
     console.log(`✅ Status: ${contactsResponse.status}`);
     console.log(`📊 Contatos encontrados: ${contactsResponse.data.length}`);
@@ -20,16 +20,6 @@ async function testAPIs() {
     if (contactsResponse.data.length > 0) {
       const firstContact = contactsResponse.data[0];
       console.log(`👤 Primeiro contato: ID=${firstContact.id}, Status=${firstContact.status}`);
-      console.log(`💬 Total de mensagens: ${firstContact.messages?.length || 0}`);
-      
-      // 1.1. Teste da API de resumo de contatos (apenas última mensagem)
-      console.log('\n1️⃣.1 Testando GET /api/contacts/summary (apenas última mensagem)');
-      const summaryResponse = await axios.get(`${BASE_URL}/api/contacts/summary`);
-      console.log(`✅ Status: ${summaryResponse.status}`);
-      console.log(`📊 Contatos no resumo: ${summaryResponse.data.length}`);
-      if (summaryResponse.data.length > 0) {
-        console.log(`💬 Mensagens na primeira entrada: ${summaryResponse.data[0].messages?.length || 0}`);
-      }
       
       // 2. Teste da API de mensagens de um contato específico
       console.log('\n2️⃣ Testando GET /api/contacts/:contactId');

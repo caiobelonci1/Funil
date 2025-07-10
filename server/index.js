@@ -210,18 +210,17 @@ async function handleMessage(event) {
 // API PARA O FRONTEND DO CRM
 // =================================================================
 
-// ROTA DA API: Listar todos os contatos e a última mensagem de cada um
+// ROTA DA API: Listar todos os contatos com histórico completo de mensagens
 app.get('/api/contacts', async (req, res) => {
-  console.log('API: Recebida requisição para listar contatos com última mensagem.');
+  console.log('API: Recebida requisição para listar contatos com histórico completo de mensagens.');
   try {
     const contacts = await prisma.user.findMany({
       orderBy: { updatedAt: 'desc' },
       // A mágica acontece aqui:
       include: {
-        // Inclui a última mensagem da relação 'messages'
+        // Inclui TODAS as mensagens da relação 'messages'
         messages: {
-          orderBy: { createdAt: 'desc' }, // Ordena para pegar a mais recente
-          take: 1, // Pega apenas 1
+          orderBy: { createdAt: 'asc' }, // Ordena da mais antiga para a mais nova (como um chat)
         },
       },
     });
@@ -229,6 +228,28 @@ app.get('/api/contacts', async (req, res) => {
   } catch (error) {
     console.error('❌ Erro ao buscar contatos:', error);
     res.status(500).json({ error: 'Erro ao buscar contatos do banco de dados.' });
+  }
+});
+
+// =================================================================
+// ROTA DA API: Listar todos os contatos com apenas a última mensagem (para performance)
+// =================================================================
+app.get('/api/contacts/summary', async (req, res) => {
+  console.log('API: Recebida requisição para listar contatos com resumo (última mensagem apenas).');
+  try {
+    const contacts = await prisma.user.findMany({
+      orderBy: { updatedAt: 'desc' },
+      include: {
+        messages: {
+          orderBy: { createdAt: 'desc' }, // Ordena para pegar a mais recente
+          take: 1, // Pega apenas a última mensagem
+        },
+      },
+    });
+    res.json(contacts);
+  } catch (error) {
+    console.error('❌ Erro ao buscar resumo de contatos:', error);
+    res.status(500).json({ error: 'Erro ao buscar resumo de contatos do banco de dados.' });
   }
 });
 
