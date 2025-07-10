@@ -1,53 +1,74 @@
-# WhatsApp CRM - Sistema de Funil de Vendas com Integração Facebook Messenger
+# Facebook Messenger Sales Funnel CRM
 
-Um sistema CRM completo com funil de vendas Kanban e integração com Facebook Messenger para gerenciamento de conversas e leads.
+A complete CRM system for managing Facebook Messenger sales conversations with Kanban board interface.
 
-## 🚀 Funcionalidades
+## 🚀 Features
 
 ### Frontend (React + TypeScript)
-- ✅ Dashboard Kanban com drag-and-drop
-- ✅ Gestão de contatos e leads
-- ✅ Interface de chat integrada em tempo real
-- ✅ Sistema de operadores
-- ✅ Sidebar com navegação completa
-- ✅ Design responsivo e profissional
-- ✅ Quick Replies e templates de mensagem
-- ✅ Indicadores de status de conexão
+- ✅ Kanban Dashboard with drag-and-drop
+- ✅ Contact and lead management
+- ✅ Real-time integrated chat interface
+- ✅ Operator system
+- ✅ Complete navigation sidebar
+- ✅ Responsive and professional design
+- ✅ Quick Replies and message templates
+- ✅ Connection status indicators
 
-### Backend (Node.js + Express)
-- ✅ API REST para integração com Messenger
-- ✅ Webhook para receber mensagens em tempo real
-- ✅ Sistema de autenticação com Facebook
-- ✅ Processamento automático de mensagens
-- ✅ Respostas automáticas inteligentes
-- ✅ Gerenciamento de perfis de usuário
-- ✅ Armazenamento em memória (dev) / Database ready
-- ✅ Templates de botões e quick replies
+### Backend (Node.js + Express + Prisma + PostgreSQL)
+- ✅ REST API for Messenger integration
+- ✅ Webhook for real-time message receiving
+- ✅ Facebook authentication system
+- ✅ Automatic message processing
+- ✅ Intelligent automatic responses
+- ✅ User profile management
+- ✅ PostgreSQL database with Prisma ORM
+- ✅ Ad referral tracking (adTitle field)
+- ✅ Status tracking with enum validation
+- ✅ CORS enabled for frontend communication
 
-## ⚡ Início Rápido
+## ⚡ Quick Start
 
-### Opção 1: Script Automático (Recomendado)
-```powershell
-# 1. Configure tudo automaticamente
-npm run setup
+### Prerequisites
+- Node.js 16+ 
+- PostgreSQL database
+- Facebook App with Messenger integration
 
-# 2. Edite server/.env com suas credenciais do Facebook
-# (Veja CONFIGURACAO_FACEBOOK.md para instruções)
+### Setup Instructions
 
-# 3. Inicie ambos os servidores
-npm run start:all
-```
-
-### Opção 2: Manual
+1. **Clone and Install**
 ```bash
-# 1. Instalar dependências do frontend
+git clone <your-repo-url>
+cd "funil facebook messenger"
 npm install
-
-# 2. Instalar dependências do servidor
 cd server
 npm install
+```
 
-# 3. Configurar variáveis de ambiente
+2. **Database Configuration**
+Create `server/.env` with your credentials:
+```env
+DATABASE_URL="postgresql://user:password@host:port/database"
+FACEBOOK_PAGE_ACCESS_TOKEN="your_page_access_token"
+FACEBOOK_VERIFY_TOKEN="your_verify_token"
+PORT=3001
+```
+
+3. **Run Database Migrations**
+```bash
+cd server
+npx prisma migrate deploy
+npx prisma generate
+```
+
+4. **Start Development**
+```bash
+# Backend (terminal 1)
+cd server
+npm run dev
+
+# Frontend (terminal 2) 
+npm run dev
+```
 cp .env.example .env
 # Editar .env com suas credenciais do Facebook
 
