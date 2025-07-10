@@ -114,18 +114,21 @@ async function handleMessage(event) {
 // API PARA O FRONTEND DO CRM
 // =================================================================
 
-// ROTA DA API: Listar todos os contatos do banco de dados
-// O frontend vai chamar esta rota para exibir a lista de conversas.
+// ROTA DA API: Listar todos os contatos e a última mensagem de cada um
 app.get('/api/contacts', async (req, res) => {
-  console.log('API: Recebida requisição para listar contatos.');
+  console.log('API: Recebida requisição para listar contatos com última mensagem.');
   try {
-    // Busca todos os usuários no banco, ordenados pelo mais recente
     const contacts = await prisma.user.findMany({
-      orderBy: {
-        updatedAt: 'desc',
+      orderBy: { updatedAt: 'desc' },
+      // A mágica acontece aqui:
+      include: {
+        // Inclui a última mensagem da relação 'messages'
+        messages: {
+          orderBy: { createdAt: 'desc' }, // Ordena para pegar a mais recente
+          take: 1, // Pega apenas 1
+        },
       },
     });
-    // Envia a lista de contatos como resposta em formato JSON
     res.json(contacts);
   } catch (error) {
     console.error('❌ Erro ao buscar contatos:', error);
