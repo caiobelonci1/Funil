@@ -46,29 +46,48 @@ app.post('/webhook', async (req, res) => {
           try {
             const messageText = event.message.text;
 
-            // 1. Procura o usuário ou cria um novo se não existir
+            // 1. Verifica se o usuário já existe no nosso banco de dados
             let user = await prisma.user.findUnique({
-              where: { messengerId: senderId }
+              where: { messengerId: senderId },
             });
 
-            // Se o usuário não existe, busca informações do perfil e cria
+            // 2. Se o usuário NÃO existir, busca os dados no Facebook e o cria
             if (!user) {
-              console.log(`🔍 Novo usuário detectado: ${senderId}. Buscando perfil...`);
-              const profile = await getUserProfile(senderId);
+              console.log(`🔍 Novo usuário detectado: ${senderId}. Buscando dados no Facebook...`);
               
-              user = await prisma.user.create({
-                data: {
-                  messengerId: senderId,
-                  firstName: profile?.first_name || null,
-                  lastName: profile?.last_name || null,
-                  name: profile ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() : null
-                }
-              });
-              
-              console.log(`✅ Usuário criado: ${user.firstName} ${user.lastName}`);
+              const fbApiUrl = `https://graph.facebook.com/${senderId}?fields=first_name,last_name&access_token=${process.env.FACEBOOK_PAGE_ACCESS_TOKEN}`;
+
+              try {
+                const response = await fetch(fbApiUrl);
+                const userData = await response.json();
+
+                user = await prisma.user.create({
+                  data: {
+                    messengerId: senderId,
+                    firstName: userData.first_name || 'Usuário',
+                    lastName: userData.last_name || 'Desconhecido',
+                    name: `${userData.first_name || 'Usuário'} ${userData.last_name || 'Desconhecido'}`.trim(),
+                  },
+                });
+                
+                console.log(`✅ Novo usuário criado: ${user.firstName} ${user.lastName}`);
+
+              } catch (error) {
+                console.error("❌ Erro ao buscar dados do usuário no Facebook:", error);
+                // Se der erro, cria usuário com nome padrão
+                user = await prisma.user.create({
+                  data: {
+                    messengerId: senderId,
+                    firstName: 'Usuário',
+                    lastName: 'sem nome',
+                    name: 'Usuário sem nome',
+                  },
+                });
+                console.log(`⚠️ Usuário criado com nome padrão devido a erro na API do Facebook`);
+              }
             }
 
-            // 2. Salva a nova mensagem no banco
+            // 3. Salva a mensagem associada ao usuário (existente ou recém-criado)
             await prisma.message.create({
               data: {
                 text: messageText,
@@ -77,14 +96,14 @@ app.post('/webhook', async (req, res) => {
               },
             });
 
-            console.log(`✅ Mensagem de ${senderId} salva no banco.`);
+            console.log(`✅ Mensagem de ${user.firstName} ${user.lastName} salva no banco.`);
 
           } catch (error) {
-            console.error('❌ Erro ao salvar no banco de dados:', error);
+            console.error('❌ Erro ao processar mensagem:', error);
           }
         }
 
-        // NOVO: Se for um clique em anúncio
+        // Se for um clique em anúncio (referral)
         if (event.referral) {
           try {
             // Verifica se o usuário já existe
@@ -93,30 +112,52 @@ app.post('/webhook', async (req, res) => {
             });
 
             if (!user) {
-              // Usuário novo vindo de anúncio - busca perfil
-              console.log(`🔍 Novo usuário via anúncio: ${senderId}. Buscando perfil...`);
-              const profile = await getUserProfile(senderId);
+              // Usuário novo vindo de anúncio - busca dados no Facebook
+              console.log(`🎯 Novo usuário via anúncio: ${senderId}. Buscando dados no Facebook...`);
               
-              user = await prisma.user.create({
-                data: {
-                  messengerId: senderId,
-                  firstName: profile?.first_name || null,
-                  lastName: profile?.last_name || null,
-                  name: profile ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() : null,
-                  adTitle: event.referral.ref
-                }
-              });
+              const fbApiUrl = `https://graph.facebook.com/${senderId}?fields=first_name,last_name&access_token=${process.env.FACEBOOK_PAGE_ACCESS_TOKEN}`;
+
+              try {
+                const response = await fetch(fbApiUrl);
+                const userData = await response.json();
+
+                user = await prisma.user.create({
+                  data: {
+                    messengerId: senderId,
+                    firstName: userData.first_name || 'Usuário',
+                    lastName: userData.last_name || 'Desconhecido',
+                    name: `${userData.first_name || 'Usuário'} ${userData.last_name || 'Desconhecido'}`.trim(),
+                    adTitle: event.referral.ref
+                  }
+                });
+                
+                console.log(`✅ Usuário criado via anúncio: ${user.firstName} ${user.lastName} (${event.referral.ref})`);
+
+              } catch (error) {
+                console.error("❌ Erro ao buscar dados do usuário no Facebook:", error);
+                // Se der erro, cria usuário com nome padrão
+                user = await prisma.user.create({
+                  data: {
+                    messengerId: senderId,
+                    firstName: 'Usuário',
+                    lastName: 'sem nome',
+                    name: 'Usuário sem nome',
+                    adTitle: event.referral.ref
+                  },
+                });
+                console.log(`⚠️ Usuário criado via anúncio com nome padrão devido a erro na API`);
+              }
             } else {
               // Usuário já existe - apenas atualiza o adTitle
               user = await prisma.user.update({
                 where: { messengerId: senderId },
                 data: { adTitle: event.referral.ref }
               });
+              console.log(`✅ AdTitle atualizado para usuário existente: ${user.firstName} ${user.lastName}`);
             }
             
-            console.log(`✅ Título de anúncio salvo para o usuário ${user.id}: ${user.firstName} ${user.lastName}`);
           } catch (error) {
-            console.error('❌ Erro ao salvar referência do anúncio:', error);
+            console.error('❌ Erro ao processar referral:', error);
           }
         }
       }
@@ -319,7 +360,7 @@ app.put('/api/contacts/:contactId', async (req, res) => {
 });
 
 // =================================================================
-// FUNÇÃO PARA BUSCAR INFORMAÇÕES DO PERFIL DO FACEBOOK
+// FUNÇÃO PARA BUSCAR INFORMAÇÕES DO PERFIL DO FACEBOOK (BACKUP)
 // =================================================================
 async function getUserProfile(userId) {
   try {
@@ -335,6 +376,26 @@ async function getUserProfile(userId) {
     return response.data;
   } catch (error) {
     console.error('❌ Erro ao buscar perfil do usuário:', error.response ? error.response.data : error.message);
+    return null;
+  }
+}
+
+// =================================================================
+// FUNÇÃO ALTERNATIVA USANDO FETCH (MAIS LEVE)
+// =================================================================
+async function getUserProfileWithFetch(userId) {
+  try {
+    const fbApiUrl = `https://graph.facebook.com/${userId}?fields=first_name,last_name,profile_pic&access_token=${process.env.FACEBOOK_PAGE_ACCESS_TOKEN}`;
+    const response = await fetch(fbApiUrl);
+    
+    if (!response.ok) {
+      throw new Error(`Facebook API returned ${response.status}: ${response.statusText}`);
+    }
+    
+    const userData = await response.json();
+    return userData;
+  } catch (error) {
+    console.error('❌ Erro ao buscar perfil do usuário com fetch:', error.message);
     return null;
   }
 }
