@@ -1,0 +1,31 @@
+// Este é o seu arquivo de schema do Prisma.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL") // Lê a URL do banco das variáveis de ambiente
+}
+
+// Modelo para seus contatos do Messenger
+model User {
+  id            String    @id @default(cuid()) // ID único no nosso banco
+  messengerId   String    @unique // ID do usuário vindo do Facebook
+  name          String?   // Nome do usuário (opcional, podemos pegar depois)
+  status        String    @default("INTERESSADO") // Status no funil
+  messages      Message[] // Lista de mensagens deste usuário
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+// Modelo para as mensagens da conversa
+model Message {
+  id        String   @id @default(cuid())
+  text      String   // O texto da mensagem
+  senderId  String   // Quem enviou (ID do Messenger)
+  userId    String   // A qual usuário esta mensagem pertence
+  user      User     @relation(fields: [userId], references: [id]) // Relação com o User
+  createdAt DateTime @default(now())
+}
