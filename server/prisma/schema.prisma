@@ -1,5 +1,3 @@
-// server/prisma/schema.prisma
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -9,26 +7,17 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Define os valores permitidos para o status
-enum Status {
-  INTERESSADO
-  AGUARDANDO_PAGAMENTO
-  PAGO
-  FINALIZADO
-  PERDIDO // Vamos adicionar, é útil
-}
-
 model User {
-  id            String    @id @default(cuid())
-  messengerId   String    @unique
-  name          String?
-  firstName     String?   // Nome do usuário
-  lastName      String?   // Sobrenome do usuário
-  adTitle       String?   // Título do anúncio do Marketplace
-  status        Status    @default(INTERESSADO) // Agora usa nosso Enum
-  messages      Message[]
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id          String    @id @default(cuid())
+  messengerId String    @unique
+  name        String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  status      Status    @default(INTERESSADO)
+  adTitle     String?
+  firstName   String?
+  lastName    String?
+  messages    Message[]
 }
 
 model Message {
@@ -36,6 +25,14 @@ model Message {
   text      String
   senderId  String
   userId    String
-  user      User     @relation(fields: [userId], references: [id])
   createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+enum Status {
+  INTERESSADO
+  AGUARDANDO_PAGAMENTO
+  PAGO
+  FINALIZADO
+  PERDIDO
 }

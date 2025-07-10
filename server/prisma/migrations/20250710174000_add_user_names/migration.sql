@@ -1,0 +1,3 @@
+-- Migration to sync with current database state
+-- Fields firstName and lastName already exist in database
+-- This migration serves as a baseline for future changes
