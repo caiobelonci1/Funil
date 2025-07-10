@@ -109,3 +109,26 @@ async function handleMessage(event) {
   const replyText = `Recebi sua mensagem: '${messageText}'`;
   await sendMessage(senderId, replyText);
 }
+
+// =================================================================
+// API PARA O FRONTEND DO CRM
+// =================================================================
+
+// ROTA DA API: Listar todos os contatos do banco de dados
+// O frontend vai chamar esta rota para exibir a lista de conversas.
+app.get('/api/contacts', async (req, res) => {
+  console.log('API: Recebida requisição para listar contatos.');
+  try {
+    // Busca todos os usuários no banco, ordenados pelo mais recente
+    const contacts = await prisma.user.findMany({
+      orderBy: {
+        updatedAt: 'desc',
+      },
+    });
+    // Envia a lista de contatos como resposta em formato JSON
+    res.json(contacts);
+  } catch (error) {
+    console.error('❌ Erro ao buscar contatos:', error);
+    res.status(500).json({ error: 'Erro ao buscar contatos do banco de dados.' });
+  }
+});
