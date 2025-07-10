@@ -47,11 +47,26 @@ app.post('/webhook', async (req, res) => {
             const messageText = event.message.text;
 
             // 1. Procura o usuário ou cria um novo se não existir
-            const user = await prisma.user.upsert({
-              where: { messengerId: senderId },
-              update: {},
-              create: { messengerId: senderId },
+            let user = await prisma.user.findUnique({
+              where: { messengerId: senderId }
             });
+
+            // Se o usuário não existe, busca informações do perfil e cria
+            if (!user) {
+              console.log(`🔍 Novo usuário detectado: ${senderId}. Buscando perfil...`);
+              const profile = await getUserProfile(senderId);
+              
+              user = await prisma.user.create({
+                data: {
+                  messengerId: senderId,
+                  firstName: profile?.first_name || null,
+                  lastName: profile?.last_name || null,
+                  name: profile ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() : null
+                }
+              });
+              
+              console.log(`✅ Usuário criado: ${user.firstName} ${user.lastName}`);
+            }
 
             // 2. Salva a nova mensagem no banco
             await prisma.message.create({
@@ -72,13 +87,34 @@ app.post('/webhook', async (req, res) => {
         // NOVO: Se for um clique em anúncio
         if (event.referral) {
           try {
-            // Garante que o usuário exista no banco
-            const user = await prisma.user.upsert({
-              where: { messengerId: senderId },
-              update: { adTitle: event.referral.ref }, // Salva o título do anúncio
-              create: { messengerId: senderId, adTitle: event.referral.ref },
+            // Verifica se o usuário já existe
+            let user = await prisma.user.findUnique({
+              where: { messengerId: senderId }
             });
-            console.log(`✅ Título de anúncio salvo para o usuário ${user.id}`);
+
+            if (!user) {
+              // Usuário novo vindo de anúncio - busca perfil
+              console.log(`🔍 Novo usuário via anúncio: ${senderId}. Buscando perfil...`);
+              const profile = await getUserProfile(senderId);
+              
+              user = await prisma.user.create({
+                data: {
+                  messengerId: senderId,
+                  firstName: profile?.first_name || null,
+                  lastName: profile?.last_name || null,
+                  name: profile ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() : null,
+                  adTitle: event.referral.ref
+                }
+              });
+            } else {
+              // Usuário já existe - apenas atualiza o adTitle
+              user = await prisma.user.update({
+                where: { messengerId: senderId },
+                data: { adTitle: event.referral.ref }
+              });
+            }
+            
+            console.log(`✅ Título de anúncio salvo para o usuário ${user.id}: ${user.firstName} ${user.lastName}`);
           } catch (error) {
             console.error('❌ Erro ao salvar referência do anúncio:', error);
           }
@@ -254,3 +290,51 @@ app.post('/api/send-message', async (req, res) => {
     res.status(500).json({ error: 'Erro no servidor ao tentar enviar mensagem.' });
   }
 });
+
+// =================================================================
+// ROTA DA API: Atualizar dados do contato (firstName, lastName, etc.)
+// =================================================================
+app.put('/api/contacts/:contactId', async (req, res) => {
+  const { contactId } = req.params;
+  const { firstName, lastName, name } = req.body;
+
+  console.log(`API: Recebida requisição para atualizar dados do contato ${contactId}`);
+
+  try {
+    const updateData = {};
+    if (firstName !== undefined) updateData.firstName = firstName;
+    if (lastName !== undefined) updateData.lastName = lastName;
+    if (name !== undefined) updateData.name = name;
+
+    const updatedContact = await prisma.user.update({
+      where: { id: contactId },
+      data: updateData,
+    });
+    
+    res.json(updatedContact);
+  } catch (error) {
+    console.error(`❌ Erro ao atualizar dados do contato ${contactId}:`, error);
+    res.status(500).json({ error: 'Erro ao atualizar dados do contato.' });
+  }
+});
+
+// =================================================================
+// FUNÇÃO PARA BUSCAR INFORMAÇÕES DO PERFIL DO FACEBOOK
+// =================================================================
+async function getUserProfile(userId) {
+  try {
+    const response = await axios.get(
+      `https://graph.facebook.com/v20.0/${userId}`,
+      {
+        params: {
+          fields: 'first_name,last_name,profile_pic',
+          access_token: process.env.FACEBOOK_PAGE_ACCESS_TOKEN
+        }
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error('❌ Erro ao buscar perfil do usuário:', error.response ? error.response.data : error.message);
+    return null;
+  }
+}

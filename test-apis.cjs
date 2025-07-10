@@ -34,6 +34,15 @@ async function testAPIs() {
       });
       console.log(`✅ Status: ${statusResponse.status}`);
       console.log(`📋 Status atualizado para: ${statusResponse.data.status}`);
+
+      // 4. Teste da API de atualização de dados do usuário
+      console.log('\n4️⃣ Testando PUT /api/contacts/:contactId (dados do usuário)');
+      const updateResponse = await axios.put(`${BASE_URL}/api/contacts/${firstContact.id}`, {
+        firstName: 'João',
+        lastName: 'Silva'
+      });
+      console.log(`✅ Status: ${updateResponse.status}`);
+      console.log(`👤 Dados atualizados: ${updateResponse.data.firstName} ${updateResponse.data.lastName}`);
     } else {
       console.log('ℹ️ Nenhum contato encontrado para testes adicionais');
     }
