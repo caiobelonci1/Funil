@@ -420,3 +420,92 @@ async function getUserProfileWithFetch(userId) {
     return null;
   }
 }
+
+// =================================================================
+// ROTA DA API: Enviar resposta para um contato via Facebook API
+// =================================================================
+app.post('/api/contacts/:id/reply', async (req, res) => {
+  const { id } = req.params; // ID do usuário para quem vamos responder
+  const { message } = req.body; // O texto da mensagem
+
+  console.log(`API: Recebida requisição para enviar resposta para contato ${id}: "${message}"`);
+
+  if (!message) {
+    return res.status(400).json({ error: 'A mensagem não pode estar vazia.' });
+  }
+
+  try {
+    // 1. Buscar o contato no nosso banco para encontrar seu messengerId
+    const contact = await prisma.user.findUnique({
+      where: { id: id },
+    });
+
+    if (!contact) {
+      return res.status(404).json({ error: 'Contato não encontrado.' });
+    }
+
+    // 2. Preparar a requisição para a API do Facebook
+    const fbApiUrl = `https://graph.facebook.com/v20.0/me/messages?access_token=${process.env.FACEBOOK_PAGE_ACCESS_TOKEN}`;
+
+    const payload = {
+      recipient: { id: contact.messengerId }, // Usar o messengerId do contato
+      message: { text: message },
+      messaging_type: 'RESPONSE',
+    };
+
+    // 3. Enviar a mensagem via Facebook API
+    let facebookSuccess = false;
+    let facebookError = null;
+    
+    try {
+      const response = await fetch(fbApiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        facebookError = `Erro do Facebook: ${response.statusText} - ${JSON.stringify(errorData)}`;
+        console.log(`⚠️ Erro no Facebook (continuando): ${facebookError}`);
+      } else {
+        facebookSuccess = true;
+        console.log(`✅ Mensagem enviada via Facebook para ${contact.messengerId}`);
+      }
+    } catch (error) {
+      facebookError = `Erro de conexão com Facebook: ${error.message}`;
+      console.log(`⚠️ Erro de conexão (continuando): ${facebookError}`);
+    }
+
+    // 4. Salvar a nossa resposta no banco de dados (sempre salvar, independente do Facebook)
+    await prisma.message.create({
+      data: {
+        text: message,
+        senderId: 'MEU_ID_DA_PAGINA', // Marcador para indicar que nós enviamos
+        userId: id,
+      },
+    });
+
+    console.log(`✅ Resposta salva no banco de dados`);
+
+    // 5. Resposta da API
+    if (facebookSuccess) {
+      res.status(200).json({ 
+        success: true, 
+        message: 'Resposta enviada com sucesso via Facebook e salva no banco.' 
+      });
+    } else {
+      res.status(200).json({ 
+        success: true, 
+        message: 'Resposta salva no banco. Erro no Facebook (desenvolvimento)',
+        facebookError: facebookError 
+      });
+    }
+
+  } catch (error) {
+    console.error('❌ Erro ao enviar resposta:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// =================================================================

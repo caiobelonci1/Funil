@@ -9,6 +9,7 @@ interface KanbanColumnProps {
   onDrop: (e: React.DragEvent, stage: string) => void;
   onDragOver: (e: React.DragEvent) => void;
   onDragStart: (e: React.DragEvent, contact: Contact) => void;
+  onContactClick?: (contact: Contact) => void;
   stage: string;
 }
 
@@ -19,6 +20,7 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({
   onDrop,
   onDragOver,
   onDragStart,
+  onContactClick,
   stage
 }) => {
   const formatCurrency = (value: number) => {
@@ -72,6 +74,7 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({
             key={contact.id}
             contact={contact}
             onDragStart={onDragStart}
+            onClick={onContactClick}
           />
         ))}
         

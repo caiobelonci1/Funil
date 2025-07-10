@@ -16,9 +16,10 @@ export interface Contact {
 interface ContactCardProps {
   contact: Contact;
   onDragStart: (e: React.DragEvent, contact: Contact) => void;
+  onClick?: (contact: Contact) => void;
 }
 
-const ContactCard: React.FC<ContactCardProps> = ({ contact, onDragStart }) => {
+const ContactCard: React.FC<ContactCardProps> = ({ contact, onDragStart, onClick }) => {
   const formatCurrency = (value: number) => {
     return `R$ ${value.toFixed(2).replace('.', ',')}`;
   };
@@ -39,7 +40,8 @@ const ContactCard: React.FC<ContactCardProps> = ({ contact, onDragStart }) => {
     <div
       draggable
       onDragStart={(e) => onDragStart(e, contact)}
-      className="bg-white rounded-lg p-4 shadow-sm border border-gray-200 cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow duration-200"
+      onClick={() => onClick?.(contact)}
+      className="bg-white rounded-lg p-4 shadow-sm border border-gray-200 cursor-pointer hover:shadow-md transition-shadow duration-200"
     >
       {/* Header with value and menu */}
       <div className="flex justify-between items-start mb-3">
