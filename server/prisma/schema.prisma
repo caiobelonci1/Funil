@@ -1,4 +1,4 @@
-// Este é o seu arquivo de schema do Prisma.
+// server/prisma/schema.prisma
 
 generator client {
   provider = "prisma-client-js"
@@ -6,26 +6,33 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL") // Lê a URL do banco das variáveis de ambiente
+  url      = env("DATABASE_URL")
 }
 
-// Modelo para seus contatos do Messenger
+// Define os valores permitidos para o status
+enum Status {
+  INTERESSADO
+  AGUARDANDO_PAGAMENTO
+  PAGO
+  FINALIZADO
+  PERDIDO // Vamos adicionar, é útil
+}
+
 model User {
-  id            String    @id @default(cuid()) // ID único no nosso banco
-  messengerId   String    @unique // ID do usuário vindo do Facebook
-  name          String?   // Nome do usuário (opcional, podemos pegar depois)
-  status        String    @default("INTERESSADO") // Status no funil
-  messages      Message[] // Lista de mensagens deste usuário
+  id            String    @id @default(cuid())
+  messengerId   String    @unique
+  name          String?
+  status        Status    @default(INTERESSADO) // Agora usa nosso Enum
+  messages      Message[]
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 }
 
-// Modelo para as mensagens da conversa
 model Message {
   id        String   @id @default(cuid())
-  text      String   // O texto da mensagem
-  senderId  String   // Quem enviou (ID do Messenger)
-  userId    String   // A qual usuário esta mensagem pertence
-  user      User     @relation(fields: [userId], references: [id]) // Relação com o User
+  text      String
+  senderId  String
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
   createdAt DateTime @default(now())
 }

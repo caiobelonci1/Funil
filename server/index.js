@@ -173,7 +173,7 @@ app.put('/api/contacts/:contactId/status', async (req, res) => {
   console.log(`API: Recebida requisição para mudar status do contato ${contactId} para ${newStatus}`);
 
   // Uma pequena validação para garantir que o status é um dos permitidos
-  const allowedStatuses = ["INTERESSADO", "PENDENTE", "CONCLUIDO"];
+  const allowedStatuses = ["INTERESSADO", "AGUARDANDO_PAGAMENTO", "PAGO", "FINALIZADO", "PERDIDO"];
   if (!allowedStatuses.includes(newStatus)) {
     return res.status(400).json({ error: "Status inválido." });
   }
