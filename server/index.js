@@ -37,9 +37,11 @@ app.post('/webhook', async (req, res) => {
   if (req.body.object === 'page') {
     for (const entry of req.body.entry) {
       for (const event of entry.messaging) {
+        const senderId = event.sender.id;
+
+        // Se for uma mensagem de texto normal
         if (event.message && event.message.text) {
           try {
-            const senderId = event.sender.id;
             const messageText = event.message.text;
 
             // 1. Procura o usuário ou cria um novo se não existir
@@ -62,6 +64,21 @@ app.post('/webhook', async (req, res) => {
 
           } catch (error) {
             console.error('❌ Erro ao salvar no banco de dados:', error);
+          }
+        }
+
+        // NOVO: Se for um clique em anúncio
+        if (event.referral) {
+          try {
+            // Garante que o usuário exista no banco
+            const user = await prisma.user.upsert({
+              where: { messengerId: senderId },
+              update: { adTitle: event.referral.ref }, // Salva o título do anúncio
+              create: { messengerId: senderId, adTitle: event.referral.ref },
+            });
+            console.log(`✅ Título de anúncio salvo para o usuário ${user.id}`);
+          } catch (error) {
+            console.error('❌ Erro ao salvar referência do anúncio:', error);
           }
         }
       }
