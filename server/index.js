@@ -189,3 +189,46 @@ app.put('/api/contacts/:contactId/status', async (req, res) => {
     res.status(500).json({ error: 'Erro ao atualizar status.' });
   }
 });
+
+// =================================================================
+// ROTA DA API: Enviar uma nova mensagem para um usuário
+// =================================================================
+app.post('/api/send-message', async (req, res) => {
+  // O frontend enviará o ID do nosso banco e o texto da mensagem
+  const { contactId, messageText } = req.body;
+
+  console.log(`API: Recebida requisição para enviar '${messageText}' para o contato ${contactId}`);
+
+  try {
+    // 1. Buscar o contato no nosso banco para encontrar seu ID do Messenger
+    const contact = await prisma.user.findUnique({
+      where: { id: contactId },
+    });
+
+    if (!contact) {
+      return res.status(404).json({ error: 'Contato não encontrado.' });
+    }
+
+    const recipientId = contact.messengerId; // ID do Messenger para quem vamos enviar
+
+    // 2. Chamar a função que envia a mensagem para a API do Facebook
+    await sendMessage(recipientId, messageText);
+    console.log(`✅ Mensagem enviada para ${recipientId} via Facebook.`);
+
+    // 3. (MUITO IMPORTANTE) Salvar a mensagem que VOCÊ enviou no nosso banco de dados
+    // Assim ela aparecerá no histórico do chat.
+    await prisma.message.create({
+      data: {
+        text: messageText,
+        senderId: 'MEU_ID_DA_PAGINA', // Marcador para indicar que nós enviamos
+        userId: contact.id,
+      }
+    });
+
+    res.status(200).json({ success: true, message: 'Mensagem enviada e salva com sucesso.' });
+
+  } catch (error) {
+    console.error(`❌ Erro ao enviar mensagem para o contato ${contactId}:`, error);
+    res.status(500).json({ error: 'Erro no servidor ao tentar enviar mensagem.' });
+  }
+});
