@@ -1,4 +1,5 @@
 const express = require('express');
+const cors = require('cors');
 require('dotenv').config();           // dotenv para variáveis de ambiente
 
 const { PrismaClient } = require('@prisma/client');
@@ -7,6 +8,7 @@ const prisma = new PrismaClient();
 const app = express();
 
 // 2. INICIALIZAÇÃO DO SERVIDOR
+app.use(cors());                     // Habilita CORS para todas as origens
 app.use(express.json());             // interpretar JSON
 
 const PORT = process.env.PORT || 3001;
