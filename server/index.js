@@ -1,57 +1,51 @@
 const express = require('express');
-const cors = require('cors');
-const crypto = require('crypto');
-require('dotenv').config();
-
-const messengerRoutes = require('./routes/messenger');
-const webhookRoutes = require('./routes/webhook');
+require('dotenv').config();           // dotenv para variáveis de ambiente
 
 const app = express();
+
+// 2. INICIALIZAÇÃO DO SERVIDOR
+app.use(express.json());             // interpretar JSON
+
 const PORT = process.env.PORT || 3001;
-
-// Middleware
-app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
-  credentials: true
-}));
-
-app.use(express.json({ verify: verifyRequestSignature }));
-app.use(express.urlencoded({ extended: true }));
-
-// Verify Facebook webhook signature
-function verifyRequestSignature(req, res, next) {
-  const signature = req.get('X-Hub-Signature-256');
-  
-  if (!signature) {
-    console.warn('Missing X-Hub-Signature-256 header');
-    return next();
-  }
-
-  const elements = signature.split('=');
-  const signatureHash = elements[1];
-  const expectedHash = crypto
-    .createHmac('sha256', process.env.FACEBOOK_APP_SECRET)
-    .update(req.body)
-    .digest('hex');
-
-  if (signatureHash !== expectedHash) {
-    console.error('Invalid signature');
-    return res.status(403).send('Invalid signature');
-  }
-
-  next();
-}
-
-// Routes
-app.use('/webhook', webhookRoutes);
-app.use('/api/messenger', messengerRoutes);
-
-// Health check
-app.get('/health', (req, res) => {
-  res.json({ status: 'OK', timestamp: new Date().toISOString() });
+app.listen(PORT, () => {
+  console.log(`🚀 Server rodando na porta ${PORT}`);
 });
 
-app.listen(PORT, () => {
-  console.log(`🚀 Messenger Integration Server running on port ${PORT}`);
-  console.log(`📱 Webhook URL: http://localhost:${PORT}/webhook`);
+// 3. ROTA DE VERIFICAÇÃO DO WEBHOOK (GET)
+app.get('/webhook', (req, res) => {
+  const mode      = req.query['hub.mode'];
+  const token     = req.query['hub.verify_token'];
+  const challenge = req.query['hub.challenge'];
+  const verifyToken = process.env.FACEBOOK_VERIFY_TOKEN;
+
+  if (mode === 'subscribe' && token === verifyToken) {
+    console.log('✅ Webhook verificado com sucesso');
+    res.status(200).send(challenge);
+  } else {
+    console.error('❌ Falha na verificação do webhook');
+    res.sendStatus(403);
+  }
+});
+
+// 4. ROTA PARA RECEBER EVENTOS E MENSAGENS (POST)
+app.post('/webhook', (req, res) => {
+  console.log('🔔 Recebido body:', JSON.stringify(req.body, null, 2));
+
+  if (req.body.object === 'page') {
+    req.body.entry.forEach(entry => {
+      entry.messaging.forEach(event => {
+        console.log('📨 Evento:', event);
+        // Aqui você pode chamar sua lógica de tratamento:
+        // if (event.message) handleMessage(event);
+        // else if (event.postback) handlePostback(event);
+      });
+    });
+
+    // Envia uma resposta 200 OK para o Facebook para confirmar o recebimento
+    res.status(200).send('EVENT_RECEIVED');
+
+  } else {
+    // Se não for um evento da página, retorna 404
+    res.sendStatus(404);
+  }
 });
