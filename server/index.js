@@ -222,6 +222,10 @@ app.get('/api/contacts', async (req, res) => {
         messages: {
           orderBy: { createdAt: 'asc' }, // Ordena da mais antiga para a mais nova (como um chat)
         },
+        // Inclui TODAS as notas da relação 'notes'
+        notes: {
+          orderBy: { createdAt: 'desc' }, // Ordena da mais nova para a mais antiga
+        },
       },
     });
     res.json(contacts);
@@ -505,6 +509,153 @@ app.post('/api/contacts/:id/reply', async (req, res) => {
   } catch (error) {
     console.error('❌ Erro ao enviar resposta:', error);
     res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// =================================================================
+// ROTAS DA API: GERENCIAMENTO DE NOTAS DOS CONTATOS
+// =================================================================
+
+// ROTA DA API: Criar uma nova nota para um contato
+app.post('/api/contacts/:id/notes', async (req, res) => {
+  const { id } = req.params; // ID do contato
+  const { content } = req.body; // Conteúdo da nota
+
+  console.log(`API: Recebida requisição para criar nota para contato ${id}: "${content}"`);
+
+  if (!content || content.trim() === '') {
+    return res.status(400).json({ error: 'O conteúdo da nota não pode estar vazio.' });
+  }
+
+  try {
+    // 1. Verificar se o contato existe
+    const contact = await prisma.user.findUnique({
+      where: { id: id },
+    });
+
+    if (!contact) {
+      return res.status(404).json({ error: 'Contato não encontrado.' });
+    }
+
+    // 2. Criar a nova nota
+    const newNote = await prisma.note.create({
+      data: {
+        content: content.trim(),
+        userId: id,
+      },
+    });
+
+    console.log(`✅ Nova nota criada para ${contact.firstName} ${contact.lastName}: "${newNote.content}"`);
+    
+    res.status(201).json(newNote);
+
+  } catch (error) {
+    console.error('❌ Erro ao criar nota:', error);
+    res.status(500).json({ error: 'Erro ao criar nota no banco de dados.' });
+  }
+});
+
+// ROTA DA API: Buscar todas as notas de um contato específico
+app.get('/api/contacts/:id/notes', async (req, res) => {
+  const { id } = req.params; // ID do contato
+
+  console.log(`API: Recebida requisição para buscar notas do contato ${id}`);
+
+  try {
+    // 1. Verificar se o contato existe
+    const contact = await prisma.user.findUnique({
+      where: { id: id },
+    });
+
+    if (!contact) {
+      return res.status(404).json({ error: 'Contato não encontrado.' });
+    }
+
+    // 2. Buscar todas as notas do contato
+    const notes = await prisma.note.findMany({
+      where: { userId: id },
+      orderBy: { createdAt: 'desc' }, // Mais recentes primeiro
+    });
+
+    console.log(`✅ Encontradas ${notes.length} notas para ${contact.firstName} ${contact.lastName}`);
+    
+    res.json(notes);
+
+  } catch (error) {
+    console.error('❌ Erro ao buscar notas:', error);
+    res.status(500).json({ error: 'Erro ao buscar notas do banco de dados.' });
+  }
+});
+
+// ROTA DA API: Atualizar uma nota existente
+app.put('/api/notes/:id', async (req, res) => {
+  const { id } = req.params; // ID da nota
+  const { content } = req.body; // Novo conteúdo da nota
+
+  console.log(`API: Recebida requisição para atualizar nota ${id}: "${content}"`);
+
+  if (!content || content.trim() === '') {
+    return res.status(400).json({ error: 'O conteúdo da nota não pode estar vazio.' });
+  }
+
+  try {
+    // 1. Verificar se a nota existe
+    const existingNote = await prisma.note.findUnique({
+      where: { id: id },
+      include: { user: true }, // Incluir dados do usuário para log
+    });
+
+    if (!existingNote) {
+      return res.status(404).json({ error: 'Nota não encontrada.' });
+    }
+
+    // 2. Atualizar a nota
+    const updatedNote = await prisma.note.update({
+      where: { id: id },
+      data: { 
+        content: content.trim(),
+      },
+    });
+
+    console.log(`✅ Nota atualizada para ${existingNote.user.firstName} ${existingNote.user.lastName}: "${updatedNote.content}"`);
+    
+    res.json(updatedNote);
+
+  } catch (error) {
+    console.error('❌ Erro ao atualizar nota:', error);
+    res.status(500).json({ error: 'Erro ao atualizar nota no banco de dados.' });
+  }
+});
+
+// ROTA DA API: Deletar uma nota
+app.delete('/api/notes/:id', async (req, res) => {
+  const { id } = req.params; // ID da nota
+
+  console.log(`API: Recebida requisição para deletar nota ${id}`);
+
+  try {
+    // 1. Verificar se a nota existe
+    const existingNote = await prisma.note.findUnique({
+      where: { id: id },
+      include: { user: true }, // Incluir dados do usuário para log
+    });
+
+    if (!existingNote) {
+      return res.status(404).json({ error: 'Nota não encontrada.' });
+    }
+
+    // 2. Deletar a nota
+    await prisma.note.delete({
+      where: { id: id },
+    });
+
+    console.log(`✅ Nota deletada para ${existingNote.user.firstName} ${existingNote.user.lastName}: "${existingNote.content}"`);
+    
+    res.json({ success: true, message: 'Nota deletada com sucesso.' });
+
+  } catch (error) {
+    console.error('❌ Erro ao deletar nota:', error);
+    res.status(500).json({ error: 'Erro ao deletar nota do banco de dados.' });
   }
 });
 

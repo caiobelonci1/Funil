@@ -18,6 +18,7 @@ model User {
   firstName   String?
   lastName    String?
   messages    Message[]
+  notes       Note[]
 }
 
 model Message {
@@ -26,6 +27,15 @@ model Message {
   senderId  String
   userId    String
   createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model Note {
+  id        String   @id @default(cuid())
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+  userId    String
   user      User     @relation(fields: [userId], references: [id])
 }
 
